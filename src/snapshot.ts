@@ -1,0 +1,27 @@
+import { z } from "zod";
+
+export const ElementStateSchema = z.enum(["visible","hidden","enabled","disabled",
+  "expanded","collapsed","haspopup","focused"]);
+export type ElementState = z.infer<typeof ElementStateSchema>;
+
+export const ElementNodeSchema = z.object({
+  id: z.string(), role: z.string(), name: z.string(), text: z.string().max(80),
+  bounds: z.tuple([z.number(), z.number(), z.number(), z.number()]),
+  state: z.array(ElementStateSchema), parent: z.string().nullable(),
+  value: z.null(), // INVARIANT: user-entered values never captured
+});
+export type ElementNode = z.infer<typeof ElementNodeSchema>;
+
+export const UISnapshotSchema = z.object({
+  v: z.literal(1), platform: z.literal("chrome"), app: z.string(), locale: z.string(),
+  viewport: z.object({ w: z.number(), h: z.number(), scrollY: z.number() }),
+  mouse: z.object({ x: z.number(), y: z.number() }),
+  elements: z.array(ElementNodeSchema).max(300),
+});
+export type UISnapshot = z.infer<typeof UISnapshotSchema>;
+
+export const DigestSchema = z.object({
+  app: z.string(), title: z.string(), locale: z.string(),
+  landmarks: z.array(z.string()).max(20), keyButtons: z.array(z.string()).max(20),
+});
+export type Digest = z.infer<typeof DigestSchema>;
