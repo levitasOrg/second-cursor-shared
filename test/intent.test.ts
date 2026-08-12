@@ -1,5 +1,16 @@
 import { describe, it, expect } from "vitest";
-import { IntentIndex, INTENT_MATCH, INTENT_STRONG, INTENT_AMBIGUITY } from "../src/index.js";
+import { IntentIndex, INTENT_MATCH, INTENT_STRONG, INTENT_AMBIGUITY,
+  isExplainAsk } from "../src/index.js";
+
+describe("isExplainAsk", () => {
+  it("classifies comprehension asks as explain", () => {
+    for (const q of ["explain this page", "what is this button", "is this email a scam?",
+      "what does this badge mean", "why is this here", "tell me about this section"])
+      expect(isExplainAsk(q)).toBe(true);
+    for (const q of ["search for cats", "attach a photo", "open settings", "send the email"])
+      expect(isExplainAsk(q)).toBe(false);
+  });
+});
 
 describe("IntentIndex", () => {
   it("matches a paraphrase to the same intent within an app", () => {

@@ -31,6 +31,16 @@ const STOPWORDS = new Set<string>([
   "with",
 ]);
 
+/** Heuristic: does this question ask for COMPREHENSION (explain-mode) rather
+ *  than a task to perform? Explain asks skip the recipe and knowledge tiers
+ *  entirely (§21: explain narration must be grounded, and recipes are
+ *  guide-only §5), so classifying them up front saves a wasted Tier-2 call. */
+export function isExplainAsk(question: string): boolean {
+  const q = question.toLowerCase();
+  return /^(explain|describe|tell me about)\b/.test(q) ||
+    /\b(what is|what's|what does|what do|what are|why is|why does|is this|are these|does this|meaning of)\b/.test(q);
+}
+
 /** lowercase → split on non-alphanumeric → drop stopwords/empties. */
 export function tokenize(text: string): string[] {
   return text
