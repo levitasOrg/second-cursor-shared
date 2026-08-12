@@ -5,19 +5,30 @@
  *  randomness or time — identical inputs always yield identical scores.
  */
 
-/** A paraphrase at or above this cosine is treated as the same intent. */
-export const INTENT_MATCH = 0.62;
+/** A paraphrase at or above this cosine is treated as the same intent.
+ *  Loosened from 0.62 → 0.50 (Phase 1E): a paraphrased repeat that shares
+ *  only the task *pattern* (e.g. "search for X") tops out around 0.57
+ *  lexically, so 0.62 missed it. Safe to loosen because a wrong Tier-1 match
+ *  just fails local re-validation and falls through to Tier-3 — same cost as a
+ *  miss. The ambiguity guard below keeps a near-tie from picking wrongly. */
+export const INTENT_MATCH = 0.5;
 /** A near-identical question (used by the store to dedup into one intent). */
 export const INTENT_STRONG = 0.85;
+/** If the top-2 same-app candidate scores are within this of each other, the
+ *  match is genuinely ambiguous — worse than a miss (spec §20) — so `match()`
+ *  returns null and lets the grounded tier disambiguate. */
+export const INTENT_AMBIGUITY = 0.08;
 
-/** ~30 common English stopwords stripped before vectorizing.
- *  Deliberately EXCLUDES light phrasal prepositions like "for" — in guidance
- *  questions ("search FOR spider man") they carry real intent signal and are
- *  what lets a paraphrase clear the match threshold. */
+/** Common English pure-function words stripped before vectorizing.
+ *  Deliberately EXCLUDES task-shape words that carry guidance intent —
+ *  `search`, `open`, `find`, `send`, `attach`, `new`, and light phrasal
+ *  prepositions like `for` ("search FOR spider man"). Those are what let a
+ *  paraphrase clear the match threshold; only content-free grammatical words
+ *  (the/is/a/my/how/…) are dropped. */
 const STOPWORDS = new Set<string>([
-  "the", "a", "an", "and", "or", "but", "i", "you", "me", "my",
-  "we", "they", "it", "he", "she", "do", "does", "did", "how", "to",
-  "of", "in", "on", "at", "is", "are", "was", "with", "this", "that",
+  "the", "a", "an", "and", "or", "i", "you", "me", "my", "do",
+  "does", "did", "how", "to", "of", "in", "on", "is", "are", "was",
+  "with",
 ]);
 
 /** lowercase → split on non-alphanumeric → drop stopwords/empties. */
@@ -67,17 +78,29 @@ export class IntentIndex {
     }
   }
 
-  /** Best same-app intent for a question, or null below INTENT_MATCH. */
+  /** Best same-app intent for a question, or null below INTENT_MATCH.
+   *  Also returns null when the top-2 candidates are within INTENT_AMBIGUITY of
+   *  each other — a near-tie is ambiguous, and Tier-3 disambiguates it. */
   match(question: string, app: string): { intentId: string; score: number } | null {
     const q = freq(tokenize(question));
     if (q.size === 0) return null;
     let best: { intentId: string; score: number } | null = null;
+    let second: { intentId: string; score: number } | null = null;
     for (const entry of this.entries.values()) {
       if (entry.app !== app) continue; // app-scoped candidates only
       const score = cosine(q, freq(entry.tokens));
-      if (!best || score > best.score) best = { intentId: entry.intentId, score };
+      const cand = { intentId: entry.intentId, score };
+      if (!best || score > best.score) {
+        second = best;
+        best = cand;
+      } else if (!second || score > second.score) {
+        second = cand;
+      }
     }
     if (!best || best.score < INTENT_MATCH) return null;
+    // Ambiguity guard: a genuine near-tie between two same-app intents is worse
+    // than a miss — return null so the grounded tier decides.
+    if (second && best.score - second.score < INTENT_AMBIGUITY) return null;
     return best;
   }
 
