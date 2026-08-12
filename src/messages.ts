@@ -3,7 +3,8 @@ import { UISnapshotSchema, DigestSchema } from "./snapshot.js";
 import { StepSchema, ExpectedAfterSchema } from "./steps.js";
 
 export const MessageTypeSchema = z.enum(["HELLO","ASK","SNAPSHOT","STEP_RESULT","EVENT",
-  "RESUME","STEP","STATUS","REQUEST_SNAPSHOT","TIEBREAK","SESSION_END","ERROR","PING","PONG"]);
+  "RESUME","STEP","STATUS","REQUEST_SNAPSHOT","TIEBREAK","SESSION_END","ERROR","PING","PONG",
+  "QUICK_ASKS_GET","QUICK_ASKS","TIEBREAK_PICK"]);
 export type MessageType = z.infer<typeof MessageTypeSchema>;
 
 export const HelloPayload = z.object({ adapter: z.literal("chrome-extension"),
@@ -19,13 +20,19 @@ export const EventPayload = z.object({
   elementId: z.string().optional(), detail: z.string().default("") });
 export const ResumePayload = z.object({ sessionId: z.string() });
 export const StepMsgPayload = z.object({ step: StepSchema, totalSteps: z.number().int() });
-export const StatusPayload = z.object({ state: z.enum(["thinking","checking","rerouting","paused","found-it"]) });
+export const StatusPayload = z.object({
+  state: z.enum(["thinking","checking","rerouting","paused","found-it","continuing"]),
+  detail: z.string().optional() });
 export const RequestSnapshotPayload = z.object({ scope: z.enum(["full","region"]),
   region: z.string().optional() });
 export const SessionEndPayload = z.object({
   outcome: z.enum(["done","stopped","expired","gave-up"]), message: z.string(),
-  recap: z.array(z.string()).default([]) });
+  recap: z.array(z.string()).default([]), masteryNote: z.string().optional() });
 export const ErrorPayload = z.object({ code: z.string(), message: z.string() });
+export const QuickAsksGetPayload = z.object({ app: z.string().min(1) });
+export const QuickAsksPayload = z.object({ items: z.array(z.object({
+  question: z.string(), uses: z.number().int() })).max(3) });
+export const TiebreakPickPayload = z.object({ choice: z.string() });
 
 export const EnvelopeSchema = z.object({
   v: z.literal(1), sessionId: z.string().optional(),
@@ -40,6 +47,8 @@ const payloadSchemas: Record<string, z.ZodTypeAny> = {
   SESSION_END: SessionEndPayload, ERROR: ErrorPayload,
   PING: z.object({}), PONG: z.object({}), TIEBREAK: z.object({ question: z.string(),
     options: z.array(z.object({ id: z.string(), label: z.string() })).max(2) }),
+  QUICK_ASKS_GET: QuickAsksGetPayload, QUICK_ASKS: QuickAsksPayload,
+  TIEBREAK_PICK: TiebreakPickPayload,
 };
 
 export function parseEnvelope(raw: string): Envelope {
