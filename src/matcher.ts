@@ -26,6 +26,8 @@ function regionScore(region: TargetDescriptor["region"], e: ElementNode, snap: U
   return match ? 1 : 0.2;
 }
 
+/** Score every snapshot element against a target descriptor (role/name/region)
+ *  and return the best match, flagging ambiguity when the top two are close. */
 export function matchDescriptor(d: TargetDescriptor, snap: UISnapshot): MatchResult {
   const scored = snap.elements.map((e) => {
     const role = e.role === d.role ? 1 : 0.2;
@@ -40,6 +42,8 @@ export function matchDescriptor(d: TargetDescriptor, snap: UISnapshot): MatchRes
   return { elementId: top.id, confidence: top.score, ambiguous };
 }
 
+/** Evaluate a step's expectedAfter condition against a fresh snapshot to decide
+ *  whether the user's action achieved what the step intended. */
 export function checkExpectedAfter(exp: ExpectedAfter, snap: UISnapshot,
     ctx: { urlChanged: boolean }): boolean {
   switch (exp.kind) {

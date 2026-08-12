@@ -7,7 +7,7 @@ function el(id: string, role: string, name: string, x = 0, y = 0): ElementNode {
     state: ["visible", "enabled"], parent: null, value: null };
 }
 function snap(elements: ElementNode[]): UISnapshot {
-  return { v: 1, platform: "chrome", app: "t.com", locale: "en",
+  return { v: 1, platform: "chrome", app: "example.com", locale: "en",
     viewport: { w: 1000, h: 800, scrollY: 0 }, mouse: { x: 0, y: 0 }, elements };
 }
 
