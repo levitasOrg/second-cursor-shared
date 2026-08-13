@@ -43,6 +43,29 @@ export function isExplainAsk(question: string): boolean {
     /\b(what is|what's|what does|what do|what are|why is|why does|is this|are these|does this|meaning of)\b/.test(q);
 }
 
+/** An explicit imperative task verb at the head of the question — the user is
+ *  telling us to DO something, so guide-mode wins even over a live selection
+ *  ("delete my account" while a paragraph happens to be highlighted). */
+const GUIDE_VERB_RE = /^(click|type|open|go to|search|send|delete|fill|submit)\b/i;
+/** Whole-page markers: the user wants every major section covered (§5 full). */
+const FULL_DEPTH_RE = /\b(whole|entire|everything|every part|all of it|fully)\b/i;
+
+/** §5/§22a ask classifier: mode (guide|explain) plus, for explain asks, how
+ *  DEEP the narration should go — "gist" (3–5 stops), "full" (one stop per
+ *  major section) or "focused" (the selection/anchor only). Precedence:
+ *   1. an explicit guide verb → guide (a selection is ignored for MODE);
+ *   2. a selection → focused explain, whatever the phrasing;
+ *   3. otherwise `isExplainAsk` decides the mode, and whole-page markers
+ *      upgrade an explain from "gist" to "full".
+ *  Guide asks never carry a depth. `isExplainAsk` stays exported unchanged. */
+export function classifyAsk(question: string, hasSelection = false):
+    { mode: "guide" | "explain"; depth?: "gist" | "full" | "focused" } {
+  if (GUIDE_VERB_RE.test(question)) return { mode: "guide" };
+  if (hasSelection) return { mode: "explain", depth: "focused" };
+  if (!isExplainAsk(question)) return { mode: "guide" };
+  return { mode: "explain", depth: FULL_DEPTH_RE.test(question) ? "full" : "gist" };
+}
+
 /** lowercase → split on non-alphanumeric → drop stopwords/empties. */
 export function tokenize(text: string): string[] {
   return text

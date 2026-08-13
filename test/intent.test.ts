@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { IntentIndex, INTENT_MATCH, INTENT_STRONG, INTENT_AMBIGUITY,
-  isExplainAsk, isAmbiguousMatch } from "../src/index.js";
+  isExplainAsk, isAmbiguousMatch, classifyAsk } from "../src/index.js";
 
 describe("isExplainAsk", () => {
   it("classifies comprehension asks as explain", () => {
@@ -9,6 +9,42 @@ describe("isExplainAsk", () => {
       expect(isExplainAsk(q)).toBe(true);
     for (const q of ["search for cats", "attach a photo", "open settings", "send the email"])
       expect(isExplainAsk(q)).toBe(false);
+  });
+});
+
+describe("classifyAsk", () => {
+  it("classifies mode + explain depth per the §5/§22a table", () => {
+    const table: Array<[string, boolean,
+        { mode: "guide" | "explain"; depth?: "gist" | "full" | "focused" }]> = [
+      // plain explain asks → gist
+      ["explain this page", false, { mode: "explain", depth: "gist" }],
+      ["what is this button", false, { mode: "explain", depth: "gist" }],
+      ["tell me about this section", false, { mode: "explain", depth: "gist" }],
+      // whole-page markers → full
+      ["explain the whole page", false, { mode: "explain", depth: "full" }],
+      ["explain the entire form", false, { mode: "explain", depth: "full" }],
+      ["what does everything here do", false, { mode: "explain", depth: "full" }],
+      ["explain all of it", false, { mode: "explain", depth: "full" }],
+      ["describe this page fully", false, { mode: "explain", depth: "full" }],
+      // a selection makes any non-guide-verb ask a focused explain
+      ["explain what I selected", true, { mode: "explain", depth: "focused" }],
+      ["what does this mean", true, { mode: "explain", depth: "focused" }],
+      ["hmm", true, { mode: "explain", depth: "focused" }],
+      // guide verbs → guide, no depth — and the override beats a selection
+      ["search for cats", false, { mode: "guide" }],
+      ["open settings", false, { mode: "guide" }],
+      ["go to my orders", false, { mode: "guide" }],
+      ["delete my account", true, { mode: "guide" }],
+      ["click the blue button", true, { mode: "guide" }],
+      // non-explain, non-verb, no selection → guide
+      ["attach a photo", false, { mode: "guide" }],
+    ];
+    for (const [q, hasSelection, expected] of table)
+      expect(classifyAsk(q, hasSelection), `${q} (sel=${hasSelection})`).toEqual(expected);
+  });
+
+  it("defaults hasSelection to false", () => {
+    expect(classifyAsk("explain this page")).toEqual({ mode: "explain", depth: "gist" });
   });
 });
 
