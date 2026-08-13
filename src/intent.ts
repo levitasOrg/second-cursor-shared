@@ -49,6 +49,10 @@ export function isExplainAsk(question: string): boolean {
 const GUIDE_VERB_RE = /^(click|type|open|go to|search|send|delete|fill|submit)\b/i;
 /** Whole-page markers: the user wants every major section covered (§5 full). */
 const FULL_DEPTH_RE = /\b(whole|entire|everything|every part|all of it|fully)\b/i;
+/** §22b deictic cues: with the mouse resting on an element, "this/that/it/
+ *  here" refers to THAT element — the ask is a focused explain at the
+ *  pointer. Without a pointer target the cue anchors nothing (stays gist). */
+const DEICTIC_RE = /\b(this|that|it|here)\b/i;
 
 /** §5/§22a ask classifier: mode (guide|explain) plus, for explain asks, how
  *  DEEP the narration should go — "gist" (3–5 stops), "full" (one stop per
@@ -58,12 +62,24 @@ const FULL_DEPTH_RE = /\b(whole|entire|everything|every part|all of it|fully)\b/
  *   3. otherwise `isExplainAsk` decides the mode, and whole-page markers
  *      upgrade an explain from "gist" to "full".
  *  Guide asks never carry a depth. `isExplainAsk` stays exported unchanged. */
-export function classifyAsk(question: string, hasSelection = false):
+export function classifyAsk(question: string, hasSelection = false,
+    hasPointerTarget = false):
     { mode: "guide" | "explain"; depth?: "gist" | "full" | "focused" } {
   if (GUIDE_VERB_RE.test(question)) return { mode: "guide" };
   if (hasSelection) return { mode: "explain", depth: "focused" };
   if (!isExplainAsk(question)) return { mode: "guide" };
-  return { mode: "explain", depth: FULL_DEPTH_RE.test(question) ? "full" : "gist" };
+  if (FULL_DEPTH_RE.test(question)) return { mode: "explain", depth: "full" };
+  // §22b: a deictic explain with the mouse on an element is focused there.
+  if (hasPointerTarget && DEICTIC_RE.test(question))
+    return { mode: "explain", depth: "focused" };
+  return { mode: "explain", depth: "gist" };
+}
+
+/** §22b: lexical token-frequency cosine between two short texts — the
+ *  narration↔target agreement score the planner's self-repair pass uses.
+ *  Same math as IntentIndex matching; 0 when either side has no tokens. */
+export function similarity(a: string, b: string): number {
+  return cosine(freq(tokenize(a)), freq(tokenize(b)));
 }
 
 /** lowercase → split on non-alphanumeric → drop stopwords/empties. */

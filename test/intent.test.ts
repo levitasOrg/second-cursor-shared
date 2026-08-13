@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { IntentIndex, INTENT_MATCH, INTENT_STRONG, INTENT_AMBIGUITY,
-  isExplainAsk, isAmbiguousMatch, classifyAsk } from "../src/index.js";
+  isExplainAsk, isAmbiguousMatch, classifyAsk, similarity } from "../src/index.js";
 
 describe("isExplainAsk", () => {
   it("classifies comprehension asks as explain", () => {
@@ -45,6 +45,33 @@ describe("classifyAsk", () => {
 
   it("defaults hasSelection to false", () => {
     expect(classifyAsk("explain this page")).toEqual({ mode: "explain", depth: "gist" });
+  });
+
+  it("§22b deictic pointer: explain + this/that/it/here + pointer target → focused", () => {
+    const t = (q: string, sel: boolean, ptr: boolean, expected: object) =>
+      expect(classifyAsk(q, sel, ptr), `${q} (sel=${sel} ptr=${ptr})`).toEqual(expected);
+    // deictic cue + pointer → focused
+    t("what is this", false, true, { mode: "explain", depth: "focused" });
+    t("what does that mean", false, true, { mode: "explain", depth: "focused" });
+    t("explain it", false, true, { mode: "explain", depth: "focused" });
+    // deictic cue without a pointer → gist (nothing to anchor)
+    t("what is this", false, false, { mode: "explain", depth: "gist" });
+    // pointer without a deictic cue → gist (user asked about the page, not "this")
+    t("explain the page layout", false, true, { mode: "explain", depth: "gist" });
+    // a selection OUTRANKS the pointer (§22b)
+    t("what is this", true, true, { mode: "explain", depth: "focused" });
+    // guide verb beats both
+    t("click this button", false, true, { mode: "guide" });
+  });
+});
+
+describe("similarity (§22b narration↔target matching)", () => {
+  it("scores lexical overlap and is exported from the package root", () => {
+    const near = similarity("the Delete account button removes your data", "Delete account");
+    const far = similarity("the Delete account button removes your data", "Sign in");
+    expect(near).toBeGreaterThan(far);
+    expect(near).toBeGreaterThan(0.2);
+    expect(similarity("", "anything")).toBe(0);
   });
 });
 
