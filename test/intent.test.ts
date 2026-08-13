@@ -60,6 +60,9 @@ describe("classifyAsk", () => {
     t("explain the page layout", false, true, { mode: "explain", depth: "gist" });
     // a selection OUTRANKS the pointer (§22b)
     t("what is this", true, true, { mode: "explain", depth: "focused" });
+    // "this page/site/tab" is the WHOLE page, not the pointed-at element
+    t("explain this page", false, true, { mode: "explain", depth: "gist" });
+    t("what is this site about", false, true, { mode: "explain", depth: "gist" });
     // guide verb beats both
     t("click this button", false, true, { mode: "guide" });
   });

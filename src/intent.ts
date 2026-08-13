@@ -52,7 +52,7 @@ const FULL_DEPTH_RE = /\b(whole|entire|everything|every part|all of it|fully)\b/
 /** §22b deictic cues: with the mouse resting on an element, "this/that/it/
  *  here" refers to THAT element — the ask is a focused explain at the
  *  pointer. Without a pointer target the cue anchors nothing (stays gist). */
-const DEICTIC_RE = /\b(this|that|it|here)\b/i;
+const DEICTIC_RE = /\b(this|that|it|here)\b(?!\s+(page|site|website|screen|tab|form))/i;
 
 /** §5/§22a ask classifier: mode (guide|explain) plus, for explain asks, how
  *  DEEP the narration should go — "gist" (3–5 stops), "full" (one stop per
