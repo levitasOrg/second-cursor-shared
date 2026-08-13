@@ -15,8 +15,10 @@ export const INTENT_MATCH = 0.5;
 /** A near-identical question (used by the store to dedup into one intent). */
 export const INTENT_STRONG = 0.85;
 /** If the top-2 same-app candidate scores are within this of each other, the
- *  match is genuinely ambiguous — worse than a miss (spec §20) — so `match()`
- *  returns null and lets the grounded tier disambiguate. */
+ *  match is genuinely ambiguous — worse than a miss (spec §20). `match()`
+ *  surfaces the runner-up (`second`) and callers decide: the store's Tier-1
+ *  lookup treats an ambiguous match as a miss, while the session can ask the
+ *  user which stored question they meant (§5 tiebreak). */
 export const INTENT_AMBIGUITY = 0.08;
 
 /** Common English pure-function words stripped before vectorizing.
@@ -73,6 +75,23 @@ type IntentEntry = { intentId: string; app: string; tokens: string[] };
 
 export type IntentBand = "match" | "gray" | "new";
 
+/** Result of `IntentIndex.match`: the best same-app intent plus — when other
+ *  candidates exist — the runner-up already computed for the ambiguity window,
+ *  surfaced so callers can tiebreak instead of silently taking the best (§5). */
+export interface IntentMatch {
+  intentId: string;
+  score: number;
+  second?: { key: string; score: number };
+}
+
+/** The ambiguity rule in one place: a match is ambiguous when its runner-up
+ *  scores within INTENT_AMBIGUITY of it. Consumers: the store's Tier-1 lookup
+ *  (ambiguous → miss, spec §20) and the session's §5 tiebreak (ambiguous gray
+ *  match → ask the user). */
+export function isAmbiguousMatch(m: IntentMatch): boolean {
+  return m.second !== undefined && m.score - m.second.score < INTENT_AMBIGUITY;
+}
+
 export class IntentIndex {
   private readonly entries = new Map<string, IntentEntry>();
 
@@ -89,9 +108,11 @@ export class IntentIndex {
   }
 
   /** Best same-app intent for a question, or null below INTENT_MATCH.
-   *  Also returns null when the top-2 candidates are within INTENT_AMBIGUITY of
-   *  each other — a near-tie is ambiguous, and Tier-3 disambiguates it. */
-  match(question: string, app: string): { intentId: string; score: number } | null {
+   *  When another same-app candidate exists, the runner-up rides along as
+   *  `second` — a near-tie (see `isAmbiguousMatch`) is NOT swallowed here:
+   *  the store's Tier-1 lookup treats it as a miss, and the session uses the
+   *  surfaced pair to ask the user which one they meant (§5 tiebreak). */
+  match(question: string, app: string): IntentMatch | null {
     const q = freq(tokenize(question));
     if (q.size === 0) return null;
     let best: { intentId: string; score: number } | null = null;
@@ -108,10 +129,10 @@ export class IntentIndex {
       }
     }
     if (!best || best.score < INTENT_MATCH) return null;
-    // Ambiguity guard: a genuine near-tie between two same-app intents is worse
-    // than a miss — return null so the grounded tier decides.
-    if (second && best.score - second.score < INTENT_AMBIGUITY) return null;
-    return best;
+    return {
+      ...best,
+      ...(second ? { second: { key: second.intentId, score: second.score } } : {}),
+    };
   }
 
   /** Classify a score into a UX band (spec §5): strong / gray / new. */

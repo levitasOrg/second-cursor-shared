@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { IntentIndex, INTENT_MATCH, INTENT_STRONG, INTENT_AMBIGUITY,
-  isExplainAsk } from "../src/index.js";
+  isExplainAsk, isAmbiguousMatch } from "../src/index.js";
 
 describe("isExplainAsk", () => {
   it("classifies comprehension asks as explain", () => {
@@ -29,15 +29,37 @@ describe("IntentIndex", () => {
     expect(m!.score).toBeGreaterThanOrEqual(INTENT_MATCH);
   });
 
-  it("returns null when two same-app intents score near-equal (ambiguity guard)", () => {
+  it("surfaces the runner-up on a near-tie instead of hiding it (§5 tiebreak)", () => {
     const idx = new IntentIndex();
     // Two intents in the SAME app whose examples share the `send` token, so the
     // query "send" lands equally close to both (0.8165 each — well above the
-    // 0.50 floor, yet within INTENT_AMBIGUITY). A genuinely ambiguous match is
-    // worse than a miss (spec §20): return null and let Tier-3 disambiguate.
+    // 0.50 floor, yet within INTENT_AMBIGUITY). match() no longer swallows the
+    // tie: it returns the best WITH `second` populated, and callers decide —
+    // the store's Tier-1 lookup treats it as a miss (guard preserved) while the
+    // session can ask the user which one they meant (§5).
     idx.add("gmail.sendEmail", "mail.google.com", ["send email", "send a message"]);
     idx.add("gmail.sendFile", "mail.google.com", ["send file", "send attachment"]);
-    expect(idx.match("send", "mail.google.com")).toBeNull();
+    const m = idx.match("send", "mail.google.com");
+    expect(m).not.toBeNull();
+    expect(m!.second).toBeDefined();
+    expect(m!.score - m!.second!.score).toBeLessThan(INTENT_AMBIGUITY);
+    expect(new Set([m!.intentId, m!.second!.key]))
+      .toEqual(new Set(["gmail.sendEmail", "gmail.sendFile"]));
+    expect(isAmbiguousMatch(m!)).toBe(true);
+  });
+
+  it("a decisive best match is not ambiguous (wide gap or no runner-up)", () => {
+    const idx = new IntentIndex();
+    idx.add("gmail.search", "mail.google.com", ["search my mail"]);
+    const solo = idx.match("search my mail", "mail.google.com");
+    expect(solo).not.toBeNull();
+    expect(solo!.second).toBeUndefined();
+    expect(isAmbiguousMatch(solo!)).toBe(false);
+    // Add a distant second intent: still surfaced, still not ambiguous.
+    idx.add("gmail.archive", "mail.google.com", ["archive selected mail conversations"]);
+    const m = idx.match("search my mail", "mail.google.com");
+    expect(m!.intentId).toBe("gmail.search");
+    if (m!.second) expect(isAmbiguousMatch(m!)).toBe(false);
   });
 
   it("returns null for an unrelated question", () => {
