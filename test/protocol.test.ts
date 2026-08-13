@@ -30,4 +30,16 @@ describe("protocol schemas", () => {
   it("rejects wrong protocol version", () => {
     expect(() => parseEnvelope(JSON.stringify({ v: 2, type: "ASK", payload: {} }))).toThrow();
   });
+  it("digest keeps optional pageHeight through an ASK round-trip (Task S5)", () => {
+    // pageHeight must be IN the schema: zod strips unknown keys on parse, so a
+    // long page's height would silently vanish from the ASK digest otherwise.
+    const env = makeEnvelope("ASK", { text: "delete my account", digest: { app: "example.com",
+      title: "Example", locale: "en", landmarks: [], keyButtons: [], pageHeight: 5400 },
+      mouse: { x: 1, y: 2 } }, "s1");
+    expect((env.payload as any).digest.pageHeight).toBe(5400);
+    // and it stays optional — a digest without it still parses
+    const bare = makeEnvelope("ASK", { text: "hi there", digest: { app: "a.com",
+      title: "", locale: "en", landmarks: [], keyButtons: [] }, mouse: { x: 0, y: 0 } }, "s1");
+    expect((bare.payload as any).digest.pageHeight).toBeUndefined();
+  });
 });

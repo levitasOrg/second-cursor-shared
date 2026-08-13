@@ -23,5 +23,9 @@ export type UISnapshot = z.infer<typeof UISnapshotSchema>;
 export const DigestSchema = z.object({
   app: z.string(), title: z.string(), locale: z.string(),
   landmarks: z.array(z.string()).max(20), keyButtons: z.array(z.string()).max(20),
+  /** Task S5: full document scrollHeight (px) so the planner knows the page
+   *  extends far beyond the viewport and can request_region instead of
+   *  guessing. Optional — older adapters simply omit it. */
+  pageHeight: z.number().optional(),
 });
 export type Digest = z.infer<typeof DigestSchema>;
