@@ -16,3 +16,19 @@ describe("phase 1G additive messages", () => {
     expect((parseEnvelope(JSON.stringify(end)).payload as any).masteryNote).toContain("3 tasks");
   });
 });
+
+describe("phase 1H additive fields", () => {
+  it("round-trips the 1H additive fields", () => {
+    const ask = makeEnvelope("ASK", { text: "explain this", mouse: { x: 1, y: 2 },
+      digest: { app: "a.com", title: "T", locale: "en", landmarks: [], keyButtons: [],
+        outline: [{ kind: "heading", level: 2, name: "History" }, { kind: "landmark", name: "navigation" }] },
+      selection: { text: "The cat is a domesticated species.", bounds: [10, 20, 300, 40] } });
+    const p = parseEnvelope(JSON.stringify(ask)).payload as any;
+    expect(p.digest.outline[0].name).toBe("History");
+    expect(p.selection.text).toContain("domesticated");
+    const step = { index: 0, action: "narrate", anchor: "selection",
+      instruction: "n", why: "w", render: "full" };
+    const env = makeEnvelope("STEP", { step, totalSteps: 1 }, "s1");
+    expect((parseEnvelope(JSON.stringify(env)).payload as any).step.anchor).toBe("selection");
+  });
+});

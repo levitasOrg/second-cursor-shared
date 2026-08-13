@@ -27,5 +27,13 @@ export const DigestSchema = z.object({
    *  extends far beyond the viewport and can request_region instead of
    *  guessing. Optional — older adapters simply omit it. */
   pageHeight: z.number().optional(),
+  /** Phase 1H (§23): whole-page section map — headings + landmarks in document
+   *  order so the planner knows what exists beyond the snapshot. Optional —
+   *  older adapters simply omit it. */
+  outline: z.array(z.object({
+    kind: z.enum(["heading","landmark"]),
+    level: z.number().int().min(1).max(6).optional(),
+    name: z.string().max(80),
+  })).max(120).optional(),
 });
 export type Digest = z.infer<typeof DigestSchema>;

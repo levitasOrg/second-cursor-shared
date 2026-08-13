@@ -21,6 +21,9 @@ export const StepSchema = z.object({
   instruction: z.string().min(1), why: z.string().min(1),
   expectedAfter: ExpectedAfterSchema.optional(),
   render: z.enum(["full","minimal","none"]).default("full"),
+  /** Phase 1H (§22a): step anchors to the user's live selection Range instead
+   *  of a snapshot element. Optional — only selection-explain narrate steps. */
+  anchor: z.literal("selection").optional(),
 });
 export type Step = z.infer<typeof StepSchema>;
 

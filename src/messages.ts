@@ -10,7 +10,11 @@ export type MessageType = z.infer<typeof MessageTypeSchema>;
 export const HelloPayload = z.object({ adapter: z.literal("chrome-extension"),
   protocol: z.literal(1), capabilities: z.array(z.string()) });
 export const AskPayload = z.object({ text: z.string().min(1), digest: DigestSchema,
-  mouse: z.object({ x: z.number(), y: z.number() }) });
+  mouse: z.object({ x: z.number(), y: z.number() }),
+  /** Phase 1H (§22a): user-highlighted text (privacy-guarded, ≤1200 chars) +
+   *  its viewport bounds. Optional — present only on selection-explain asks. */
+  selection: z.object({ text: z.string().max(1200),
+    bounds: z.tuple([z.number(), z.number(), z.number(), z.number()]) }).optional() });
 export const SnapshotPayload = z.object({ snapshot: UISnapshotSchema,
   scope: z.enum(["full","region"]).default("full") });
 export const StepResultPayload = z.object({ stepIndex: z.number().int(),
