@@ -32,3 +32,26 @@ describe("phase 1H additive fields", () => {
     expect((parseEnvelope(JSON.stringify(env)).payload as any).step.anchor).toBe("selection");
   });
 });
+
+describe("phase 1I additive fields", () => {
+  it("round-trips the 1I additive fields", () => {
+    const ask = makeEnvelope("ASK", { text: "what is this?", mouse: { x: 5, y: 6 },
+      digest: { app: "a.com", title: "T", locale: "en", landmarks: [], keyButtons: [] },
+      pointer: { elementId: "e7", role: "button", name: "Pay invoice now",
+        bounds: [100, 200, 120, 32] } });
+    const p = parseEnvelope(JSON.stringify(ask)).payload as any;
+    expect(p.pointer.elementId).toBe("e7");
+    expect(p.pointer.name).toContain("Pay invoice");
+    const ev = makeEnvelope("EVENT", { kind: "struggle",
+      detail: "circling near Send", elementId: "e3" }, "s1");
+    expect((parseEnvelope(JSON.stringify(ev)).payload as any).kind).toBe("struggle");
+    const ptrStep = { index: 0, action: "narrate", anchor: "pointer",
+      instruction: "n", why: "w", render: "full" };
+    const env = makeEnvelope("STEP", { step: ptrStep, totalSteps: 1 }, "s1");
+    expect((parseEnvelope(JSON.stringify(env)).payload as any).step.anchor).toBe("pointer");
+    // Regression pin: the 1H selection anchor still round-trips after the widen.
+    const selStep = { ...ptrStep, anchor: "selection" };
+    const env2 = makeEnvelope("STEP", { step: selStep, totalSteps: 1 }, "s1");
+    expect((parseEnvelope(JSON.stringify(env2)).payload as any).step.anchor).toBe("selection");
+  });
+});

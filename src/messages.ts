@@ -14,13 +14,18 @@ export const AskPayload = z.object({ text: z.string().min(1), digest: DigestSche
   /** Phase 1H (§22a): user-highlighted text (privacy-guarded, ≤1200 chars) +
    *  its viewport bounds. Optional — present only on selection-explain asks. */
   selection: z.object({ text: z.string().max(1200),
+    bounds: z.tuple([z.number(), z.number(), z.number(), z.number()]) }).optional(),
+  /** Phase 1I (§22b): the snapshot element the mouse rests on at ask time —
+   *  the deictic anchor for "what is this?". Optional adapter capability,
+   *  like `selection`; a live selection always outranks it. */
+  pointer: z.object({ elementId: z.string(), role: z.string(), name: z.string(),
     bounds: z.tuple([z.number(), z.number(), z.number(), z.number()]) }).optional() });
 export const SnapshotPayload = z.object({ snapshot: UISnapshotSchema,
   scope: z.enum(["full","region"]).default("full") });
 export const StepResultPayload = z.object({ stepIndex: z.number().int(),
   pass: z.boolean(), observed: z.string().default("") });
 export const EventPayload = z.object({
-  kind: z.enum(["click","type","scroll","visibility","interrupt","next-chip","feedback","suspicious-page"]),
+  kind: z.enum(["click","type","scroll","visibility","interrupt","next-chip","feedback","suspicious-page","struggle"]),
   elementId: z.string().optional(), detail: z.string().default("") });
 export const ResumePayload = z.object({ sessionId: z.string() });
 export const StepMsgPayload = z.object({ step: StepSchema, totalSteps: z.number().int() });
