@@ -77,9 +77,18 @@ export function classifyAsk(question: string, hasSelection = false,
 
 /** §22b: lexical token-frequency cosine between two short texts — the
  *  narration↔target agreement score the planner's self-repair pass uses.
- *  Same math as IntentIndex matching; 0 when either side has no tokens. */
+ *  Same math as IntentIndex matching; 0 when either side has no tokens.
+ *  Narration GLUE (deictic and pacing words: "this…", "tap next when
+ *  you're ready") is dropped first — live-probe evidence: "This is the
+ *  article title — everything on this page…" cosine-matched the link
+ *  "Permanent link to this revision of this page" at 0.59 purely on
+ *  this/page overlap and yanked the target off the h1. */
+const NARRATION_GLUE = new Set(["this", "that", "these", "those", "it", "its",
+  "here", "there", "about", "everything", "anything", "see", "tap", "click",
+  "next", "ready", "want", "like", "when", "now", "your", "youre", "one"]);
 export function similarity(a: string, b: string): number {
-  return cosine(freq(tokenize(a)), freq(tokenize(b)));
+  const strip = (t: string) => tokenize(t).filter((w) => !NARRATION_GLUE.has(w));
+  return cosine(freq(strip(a)), freq(strip(b)));
 }
 
 /** lowercase → split on non-alphanumeric → drop stopwords/empties. */

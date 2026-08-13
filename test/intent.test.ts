@@ -155,3 +155,13 @@ describe("IntentIndex", () => {
     expect(INTENT_AMBIGUITY).toBe(0.08);
   });
 });
+
+describe("similarity narration-glue (live-probe fix)", () => {
+  it("deictic/pacing words never carry a match — 'this…page' can't hand the target to 'Permanent link to this revision of this page'", () => {
+    const instr = "This is the article title — everything on this page is about this topic.";
+    const permalink = similarity(instr, "Permanent link to this revision of this page Permanent link link");
+    const h1 = similarity(instr, "Cat Cat heading title");
+    expect(permalink).toBeLessThan(0.2);
+    expect(h1).toBeGreaterThan(permalink);
+  });
+});
