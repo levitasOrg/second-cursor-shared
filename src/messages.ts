@@ -1,10 +1,11 @@
 import { z } from "zod";
 import { UISnapshotSchema, DigestSchema } from "./snapshot.js";
 import { StepSchema, ExpectedAfterSchema } from "./steps.js";
+import { ClientDeltaSchema } from "./trace.js";
 
 export const MessageTypeSchema = z.enum(["HELLO","ASK","SNAPSHOT","STEP_RESULT","EVENT",
   "RESUME","STEP","STATUS","REQUEST_SNAPSHOT","TIEBREAK","SESSION_END","ERROR","PING","PONG",
-  "QUICK_ASKS_GET","QUICK_ASKS","TIEBREAK_PICK"]);
+  "QUICK_ASKS_GET","QUICK_ASKS","TIEBREAK_PICK","STOP","REPORT"]);
 export type MessageType = z.infer<typeof MessageTypeSchema>;
 
 export const HelloPayload = z.object({ adapter: z.literal("chrome-extension"),
@@ -42,6 +43,12 @@ export const QuickAsksGetPayload = z.object({ app: z.string().min(1) });
 export const QuickAsksPayload = z.object({ items: z.array(z.object({
   question: z.string(), uses: z.number().int() })).max(3) });
 export const TiebreakPickPayload = z.object({ choice: z.string() });
+/** The user closed the guide. Carries no data — the intent is the message.
+ *  Sent from every exit path (✕, Stop, Escape) so a session the user has
+ *  dismissed stops planning and stops costing, instead of lingering until the
+ *  tab TTL expires. `reason` is diagnostic only. */
+export const StopPayload = z.object({
+  reason: z.enum(["user-stop", "user-escape", "user-close"]).default("user-stop") });
 
 export const EnvelopeSchema = z.object({
   v: z.literal(1), sessionId: z.string().optional(),
@@ -57,7 +64,7 @@ const payloadSchemas: Record<string, z.ZodTypeAny> = {
   PING: z.object({}), PONG: z.object({}), TIEBREAK: z.object({ question: z.string(),
     options: z.array(z.object({ id: z.string(), label: z.string() })).max(2) }),
   QUICK_ASKS_GET: QuickAsksGetPayload, QUICK_ASKS: QuickAsksPayload,
-  TIEBREAK_PICK: TiebreakPickPayload,
+  TIEBREAK_PICK: TiebreakPickPayload, STOP: StopPayload, REPORT: ClientDeltaSchema,
 };
 
 export function parseEnvelope(raw: string): Envelope {

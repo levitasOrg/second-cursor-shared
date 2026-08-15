@@ -6,3 +6,4 @@ export * from "./messages.js";
 export * from "./matcher.js";
 export * from "./recipe.js";
 export * from "./intent.js";
+export * from "./trace.js";
