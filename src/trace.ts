@@ -62,6 +62,10 @@ export const SessionTraceSchema = z.object({
     }).optional(),
   }).strict(),
   client: ClientDeltaSchema.omit({ freeText: true }).optional(),
-  sealed: SealedBlobSchema.optional(),
+  /** Sealed SEPARATELY per half: the server holds no private key, so it cannot
+   *  open-merge-reseal two payloads into one. A single column meant whichever
+   *  half wrote last destroyed the other's free text. */
+  sealedBrain: SealedBlobSchema.optional(),
+  sealedClient: SealedBlobSchema.optional(),
 }).strict();
 export type SessionTrace = z.infer<typeof SessionTraceSchema>;
