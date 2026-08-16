@@ -25,6 +25,14 @@ export const StepSchema = z.object({
    *  Range, or to the live element the mouse rested on at ask time, instead
    *  of a snapshot id. Optional — explain-mode narrate steps only. */
   anchor: z.enum(["selection", "pointer"]).optional(),
+  /** PART 4a (§L2): the destination this step would send the user to, when the
+   *  step is a navigation. ADDITIVE and optional — protocol stays v1. It exists
+   *  so `screenPlan`'s cross-origin rule has a field to read: zod strips unknown
+   *  keys, so without it a model-supplied `href` would be silently deleted by
+   *  `PlanSchema.safeParse` and the rule would be permanently dead code.
+   *  Advisory, not authoritative — nothing executes it (the adapter acts on
+   *  `targetId`), and the snapshot carries no link destinations yet. */
+  href: z.string().optional(),
 });
 export type Step = z.infer<typeof StepSchema>;
 
