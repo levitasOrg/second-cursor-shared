@@ -15,7 +15,14 @@
  *    U+202A-U+202E   bidi embedding / override controls
  *    U+2060-U+2064   word joiner and invisible operators
  *    U+FEFF          byte-order mark */
-const INVISIBLE = /[\u00AD\u200B-\u200F\u202A-\u202E\u2060-\u2064\uFEFF]/;
+/** Soft hyphen · zero-width + directional marks · bidi overrides · bidi
+ *  ISOLATES · word joiner and invisible operators · BOM · and the Unicode Tags
+ *  block. Tags (U+E0000-E007F) encode arbitrary ASCII invisibly and are the
+ *  best-known channel for text aimed at a model rather than a reader, so they
+ *  matter more here than the zero-width characters everyone remembers. The `u`
+ *  flag is required for the astral tag range. */
+const INVISIBLE =
+  /[\u00AD\u200B-\u200F\u202A-\u202E\u2066-\u2069\u2060-\u2064\uFEFF\u{E0000}-\u{E007F}]/u;
 /** Anything angle-bracketed: real markup, and forged delimiters like
  *  `</untrusted>` that would otherwise end the data block early. */
 const MARKUP = /<[^>]*>/;
@@ -24,7 +31,7 @@ const MARKUP = /<[^>]*>/;
  *  are safe to share; `RegExp.test` does not, which is why the predicate below
  *  uses the non-global originals. Both are derived from one source, so the
  *  stripper and the detector cannot drift apart. */
-const INVISIBLE_G = new RegExp(INVISIBLE.source, "g");
+const INVISIBLE_G = new RegExp(INVISIBLE.source, "gu");
 const MARKUP_G = new RegExp(MARKUP.source, "g");
 const WHITESPACE_G = /\s+/g;
 

@@ -98,3 +98,43 @@ describe("sanitizeText", () => {
     expect(once.length).toBe(SANITIZE_MAX_NAME);
   });
 });
+
+describe("sanitizeText — the invisible channels an LLM can actually read", () => {
+  // Found during PART 4a Task 1 review: the original class stripped zero-width
+  // and bidi OVERRIDES but not bidi ISOLATES or the Unicode Tags block. Tags
+  // (U+E0000–E007F) are the best-known smuggling channel for model-directed
+  // text — arbitrary ASCII, wholly invisible on screen. A red-team fixture
+  // written against the narrower class would have passed while the real gap
+  // stayed open, which is the worst outcome for a security test.
+  const hidden = (cp: number) => String.fromCodePoint(cp);
+
+  it("strips bidi isolates, not just overrides", () => {
+    for (const cp of [0x2066, 0x2067, 0x2068, 0x2069]) {
+      expect(sanitizeText(`Save${hidden(cp)}draft`)).toBe("Savedraft");
+      expect(hadSuspiciousChars(`Save${hidden(cp)}draft`)).toBe(true);
+    }
+  });
+
+  it("strips the Unicode Tags block — invisible ASCII smuggling", () => {
+    // "transfer" encoded in tag characters: invisible to the user, plain text
+    // to a model reading the snapshot.
+    const smuggled = "Pay" + [..."transfer"]
+      .map((c) => hidden(0xE0000 + c.charCodeAt(0))).join("");
+    expect(sanitizeText(smuggled)).toBe("Pay");
+    expect(hadSuspiciousChars(smuggled)).toBe(true);
+  });
+
+  it("strips the whole tag range, including its boundaries", () => {
+    for (const cp of [0xE0000, 0xE0041, 0xE007F]) {
+      expect(sanitizeText(`Save${hidden(cp)}x`)).toBe("Savex");
+    }
+  });
+
+  it("leaves ordinary non-ASCII text alone — this is not an ASCII filter", () => {
+    // Over-stripping would break every non-English label on earth.
+    expect(sanitizeText("Descargar archivo")).toBe("Descargar archivo");
+    expect(sanitizeText("ダウンロード")).toBe("ダウンロード");
+    expect(sanitizeText("Télécharger")).toBe("Télécharger");
+    expect(hadSuspiciousChars("ダウンロード")).toBe(false);
+  });
+});
