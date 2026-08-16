@@ -6,6 +6,10 @@ export type ElementState = z.infer<typeof ElementStateSchema>;
 
 export const ElementNodeSchema = z.object({
   id: z.string(), role: z.string(), name: z.string(), text: z.string().max(80),
+  /** Where a link goes, HOSTNAME ONLY (see destHost). Absent for non-links and
+   *  for same-origin links. L2's cross-origin rule needs a destination the page
+   *  states, not one the model claims. */
+  dest: z.string().max(253).optional(),
   bounds: z.tuple([z.number(), z.number(), z.number(), z.number()]),
   state: z.array(ElementStateSchema), parent: z.string().nullable(),
   value: z.null(), // INVARIANT: user-entered values never captured

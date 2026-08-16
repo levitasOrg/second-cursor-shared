@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { sanitizeText, hadSuspiciousChars, SANITIZE_MAX_NAME } from "../src/sanitize.js";
+import { sanitizeText, hadSuspiciousChars, SANITIZE_MAX_NAME, destHost } from "../src/sanitize.js";
 
 describe("sanitizeText", () => {
   it("strips zero-width and bidi control characters", () => {
@@ -136,5 +136,30 @@ describe("sanitizeText — the invisible channels an LLM can actually read", () 
     expect(sanitizeText("ダウンロード")).toBe("ダウンロード");
     expect(sanitizeText("Télécharger")).toBe("Télécharger");
     expect(hadSuspiciousChars("ダウンロード")).toBe(false);
+  });
+});
+
+describe("destHost — where a link actually goes", () => {
+  it("reduces a URL to its hostname, never the path or query", () => {
+    // The privacy invariant is hostnames only: a path carries record ids and a
+    // query carries tokens. The security rule only needs the host anyway.
+    expect(destHost("https://evil.example/steal?token=abc")).toBe("evil.example");
+    expect(destHost("https://accounts.example.com/login")).toBe("accounts.example.com");
+  });
+
+  it("refuses to normalise a scheme that is not http(s)", () => {
+    // javascript: and data: are not navigations, they are execution.
+    expect(destHost("javascript:alert(1)")).toBe("!scheme");
+    expect(destHost("data:text/html,<script>x</script>")).toBe("!scheme");
+  });
+
+  it("returns undefined for a relative link — same origin by definition", () => {
+    expect(destHost("/settings")).toBeUndefined();
+    expect(destHost("#section")).toBeUndefined();
+    expect(destHost("")).toBeUndefined();
+  });
+
+  it("returns undefined rather than throwing on nonsense", () => {
+    expect(destHost("http://[::bad")).toBeUndefined();
   });
 });

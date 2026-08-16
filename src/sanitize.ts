@@ -52,3 +52,27 @@ export function sanitizeText(s: string, max: number = SANITIZE_MAX_NAME): string
 export function hadSuspiciousChars(s: string): boolean {
   return INVISIBLE.test(s) || MARKUP.test(s);
 }
+
+/** The hostname a link points at, or a marker, or nothing.
+ *
+ *  L2's cross-origin rule needs an AUTHORITATIVE destination. A model-supplied
+ *  `href` on a step is advisory at best — an attacker-steered model simply
+ *  omits it — so the destination has to come from the page itself, captured
+ *  alongside the element.
+ *
+ *  Hostname only, never the path or query: the privacy invariant forbids full
+ *  URLs (paths carry record ids, queries carry tokens) and the security rule
+ *  does not need them. A relative link is same-origin by definition and
+ *  returns undefined, so ordinary in-app navigation carries no extra data.
+ *  Non-navigational schemes return a marker rather than a host, because
+ *  `javascript:` and `data:` are execution, not destination. */
+export function destHost(href: string): string | undefined {
+  if (!href) return undefined;
+  if (/^[a-z][a-z0-9+.-]*:/i.test(href) && !/^https?:/i.test(href)) return "!scheme";
+  if (!/^https?:/i.test(href)) return undefined;   // relative → same origin
+  try {
+    return new URL(href).hostname || undefined;
+  } catch {
+    return undefined;
+  }
+}
