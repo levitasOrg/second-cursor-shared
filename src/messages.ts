@@ -41,7 +41,9 @@ export const SessionEndPayload = z.object({
 export const ErrorPayload = z.object({ code: z.string(), message: z.string() });
 export const QuickAsksGetPayload = z.object({ app: z.string().min(1) });
 export const QuickAsksPayload = z.object({ items: z.array(z.object({
-  question: z.string(), uses: z.number().int() })).max(3) });
+  // 8, not 3 (2026-08-20): the bar shows 3 idle and filters the rest as the
+  // user types — the typeahead corpus rides the same envelope.
+  question: z.string(), uses: z.number().int() })).max(8) });
 export const TiebreakPickPayload = z.object({ choice: z.string() });
 /** The user closed the guide. Carries no data — the intent is the message.
  *  Sent from every exit path (✕, Stop, Escape) so a session the user has
