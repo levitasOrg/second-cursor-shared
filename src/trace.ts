@@ -57,6 +57,11 @@ export const SessionTraceSchema = z.object({
     state: z.string(), stepIndex: z.number().int(), totalSteps: z.number().int(),
     tier: z.number().int(), model: z.string().max(60), llmCalls: z.number().int(),
     rerouteCount: z.number().int(),
+    /** PART 2 U2: per-session token totals — open numerics per the privacy
+     *  rule; the cost ledger's session-level anchor. Optional (older rows). */
+    tokensIn: z.number().int().optional(),
+    tokensOut: z.number().int().optional(),
+    cacheRead: z.number().int().optional(),
     plan: z.array(z.object({
       index: z.number().int(), action: z.string().max(20),
       targetId: z.string().max(40).nullable(), render: z.string().max(10),
