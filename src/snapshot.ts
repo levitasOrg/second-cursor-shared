@@ -10,6 +10,11 @@ export const ElementNodeSchema = z.object({
    *  for same-origin links. L2's cross-origin rule needs a destination the page
    *  states, not one the model claims. */
   dest: z.string().max(253).optional(),
+  /** The PAGE says this field takes a secret (input type=password, or an
+   *  autocomplete hint naming credentials/cards). Same precedent as `dest`:
+   *  L2 needs an authoritative signal — an unnamed password box defeats any
+   *  name-matching rule, and a model cannot be trusted to volunteer it. */
+  secret: z.literal(true).optional(),
   bounds: z.tuple([z.number(), z.number(), z.number(), z.number()]),
   state: z.array(ElementStateSchema), parent: z.string().nullable(),
   value: z.null(), // INVARIANT: user-entered values never captured
