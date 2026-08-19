@@ -5,7 +5,7 @@ import { ClientDeltaSchema } from "./trace.js";
 
 export const MessageTypeSchema = z.enum(["HELLO","ASK","SNAPSHOT","STEP_RESULT","EVENT",
   "RESUME","STEP","STATUS","REQUEST_SNAPSHOT","TIEBREAK","SESSION_END","ERROR","PING","PONG",
-  "QUICK_ASKS_GET","QUICK_ASKS","TIEBREAK_PICK","STOP","REPORT"]);
+  "QUICK_ASKS_GET","QUICK_ASKS","TIEBREAK_PICK","STOP","REPORT","REPORT_DELETE"]);
 export type MessageType = z.infer<typeof MessageTypeSchema>;
 
 export const HelloPayload = z.object({ adapter: z.literal("chrome-extension"),
@@ -65,6 +65,8 @@ const payloadSchemas: Record<string, z.ZodTypeAny> = {
     options: z.array(z.object({ id: z.string(), label: z.string() })).max(2) }),
   QUICK_ASKS_GET: QuickAsksGetPayload, QUICK_ASKS: QuickAsksPayload,
   TIEBREAK_PICK: TiebreakPickPayload, STOP: StopPayload, REPORT: ClientDeltaSchema,
+  // Revoke: empty payload — the envelope's sessionId names the trace row to drop.
+  REPORT_DELETE: z.object({}),
 };
 
 export function parseEnvelope(raw: string): Envelope {

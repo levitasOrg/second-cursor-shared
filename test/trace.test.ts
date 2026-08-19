@@ -36,3 +36,27 @@ describe("ClientDeltaSchema", () => {
     expect((env.payload as typeof validDelta).kind).toBe("crash");
   });
 });
+
+describe("report category (page 08: enumerable, never free text)", () => {
+  it.each(["wrong-element", "no-advance", "too-slow", "cant-exit", "other"] as const)(
+    "accepts category %s", (category) => {
+      expect(ClientDeltaSchema.safeParse({ ...validDelta, category }).success).toBe(true);
+    });
+
+  it("rejects a free-text category — the field must stay countable", () => {
+    const bad = { ...validDelta, category: "the tooltip covered my email subject" };
+    expect(ClientDeltaSchema.safeParse(bad).success).toBe(false);
+  });
+
+  it("is optional: auto-captured deltas carry no category", () => {
+    expect(ClientDeltaSchema.safeParse(validDelta).success).toBe(true);
+  });
+});
+
+describe("REPORT_DELETE envelope (receipt & revoke)", () => {
+  it("round-trips with an empty payload — the sessionId names the row", () => {
+    const env = makeEnvelope("REPORT_DELETE", {}, "abc-123");
+    expect(env.type).toBe("REPORT_DELETE");
+    expect(env.sessionId).toBe("abc-123");
+  });
+});

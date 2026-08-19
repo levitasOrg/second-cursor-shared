@@ -21,6 +21,10 @@ export const FreeTextSchema = z.object({
  *  a new open field is a schema error rather than a silent leak. */
 export const ClientDeltaSchema = z.object({
   kind: z.enum(["crash", "render-mismatch", "struggle", "manual"]),
+  /** The user's one-tap answer to "what happened?" on the preview. An enum so
+   *  reports stay countable without unsealing anything; anything they *write*
+   *  goes in freeText.note and is sealed. */
+  category: z.enum(["wrong-element", "no-advance", "too-slow", "cant-exit", "other"]).optional(),
   fingerprint: z.string().min(1).max(64),
   app: HostnameSchema.optional(),
   ext: z.object({ version: z.string().max(20), browser: z.string().max(20) }).strict(),
