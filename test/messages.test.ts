@@ -66,4 +66,11 @@ describe("PART O1 additive fields", () => {
     const parsed = parseEnvelope(JSON.stringify(withToken));
     expect((parsed.payload as { token?: string }).token).toBe("abc.def.ghi");
   });
+
+  it("HELLO accepts an optional deviceId (O1b trial key)", () => {
+    const env = makeEnvelope("HELLO", { adapter: "chrome-extension", protocol: 1,
+      capabilities: ["guide"], deviceId: "d-123" });
+    const parsed = parseEnvelope(JSON.stringify(env));
+    expect((parsed.payload as { deviceId?: string }).deviceId).toBe("d-123");
+  });
 });

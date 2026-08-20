@@ -13,7 +13,10 @@ export const HelloPayload = z.object({ adapter: z.literal("chrome-extension"),
   protocol: z.literal(1), capabilities: z.array(z.string()),
   /** PART O1 (additive): a JWT access token. Absent = anonymous. A bad token
    *  degrades to anonymous — sign-in problems must never kill guidance. */
-  token: z.string().optional() });
+  token: z.string().optional(),
+  /** Additive O1b field: client-minted stable id for the anonymous trial —
+   *  an abuse-friction key, not identity. */
+  deviceId: z.string().max(64).optional() });
 export const AskPayload = z.object({ text: z.string().min(1), digest: DigestSchema,
   mouse: z.object({ x: z.number(), y: z.number() }),
   /** Phase 1H (§22a): user-highlighted text (privacy-guarded, ≤1200 chars) +
