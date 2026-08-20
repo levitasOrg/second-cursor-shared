@@ -10,7 +10,10 @@ export const MessageTypeSchema = z.enum(["HELLO","ASK","SNAPSHOT","STEP_RESULT",
 export type MessageType = z.infer<typeof MessageTypeSchema>;
 
 export const HelloPayload = z.object({ adapter: z.literal("chrome-extension"),
-  protocol: z.literal(1), capabilities: z.array(z.string()) });
+  protocol: z.literal(1), capabilities: z.array(z.string()),
+  /** PART O1 (additive): a JWT access token. Absent = anonymous. A bad token
+   *  degrades to anonymous — sign-in problems must never kill guidance. */
+  token: z.string().optional() });
 export const AskPayload = z.object({ text: z.string().min(1), digest: DigestSchema,
   mouse: z.object({ x: z.number(), y: z.number() }),
   /** Phase 1H (§22a): user-highlighted text (privacy-guarded, ≤1200 chars) +

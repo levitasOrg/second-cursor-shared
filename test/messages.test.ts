@@ -55,3 +55,15 @@ describe("phase 1I additive fields", () => {
     expect((parseEnvelope(JSON.stringify(env2)).payload as any).step.anchor).toBe("selection");
   });
 });
+
+describe("PART O1 additive fields", () => {
+  it("HELLO accepts an optional auth token (additive, protocol stays 1)", () => {
+    const bare = makeEnvelope("HELLO",
+      { adapter: "chrome-extension", protocol: 1, capabilities: ["guide"] });
+    expect(() => parseEnvelope(JSON.stringify(bare))).not.toThrow();
+    const withToken = makeEnvelope("HELLO", { adapter: "chrome-extension",
+      protocol: 1, capabilities: ["guide"], token: "abc.def.ghi" });
+    const parsed = parseEnvelope(JSON.stringify(withToken));
+    expect((parsed.payload as { token?: string }).token).toBe("abc.def.ghi");
+  });
+});
