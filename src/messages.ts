@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { UISnapshotSchema, DigestSchema } from "./snapshot.js";
-import { StepSchema, ExpectedAfterSchema } from "./steps.js";
+import { StepSchema } from "./steps.js";
 import { ClientDeltaSchema } from "./trace.js";
 
 export const MessageTypeSchema = z.enum(["HELLO","ASK","SNAPSHOT","STEP_RESULT","EVENT",
