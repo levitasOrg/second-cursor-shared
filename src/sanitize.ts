@@ -37,6 +37,7 @@
  *  for an LLM payload, and no filter can tell a heart's VS16 from a
  *  smuggler's. */
 const INVISIBLE =
+  // biome-ignore lint/suspicious/noMisleadingCharacterClass: matching combining marks (VS, U+034F) INDIVIDUALLY is the point - each is stripped as its own code point, never as part of a grapheme.
   /[\u00AD\u034F\u115F\u1160\u180E\u200B-\u200F\u202A-\u202E\u2066-\u2069\u2060-\u2064\u3164\uFE00-\uFE0F\uFEFF\u{E0000}-\u{E007F}\u{E0100}-\u{E01EF}]/u;
 /** Anything angle-bracketed: real markup, and forged delimiters like
  *  `</untrusted>` that would otherwise end the data block early. */
