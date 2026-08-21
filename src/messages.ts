@@ -12,12 +12,16 @@ export type MessageType = z.infer<typeof MessageTypeSchema>;
 export const HelloPayload = z.object({ adapter: z.literal("chrome-extension"),
   protocol: z.literal(1), capabilities: z.array(z.string()),
   /** PART O1 (additive): a JWT access token. Absent = anonymous. A bad token
-   *  degrades to anonymous — sign-in problems must never kill guidance. */
-  token: z.string().optional(),
+   *  degrades to anonymous — sign-in problems must never kill guidance.
+   *  P1-6: capped — a real access JWT is well under 4KB; anything bigger is
+   *  payload smuggling, not a token. */
+  token: z.string().max(4096).optional(),
   /** Additive O1b field: client-minted stable id for the anonymous trial —
    *  an abuse-friction key, not identity. */
   deviceId: z.string().max(64).optional() });
-export const AskPayload = z.object({ text: z.string().min(1), digest: DigestSchema,
+// P1-6 (audit B4): an ask is a sentence, not a document — the cap stops paid
+// token amplification through the question field.
+export const AskPayload = z.object({ text: z.string().min(1).max(2000), digest: DigestSchema,
   mouse: z.object({ x: z.number(), y: z.number() }),
   /** Phase 1H (§22a): user-highlighted text (privacy-guarded, ≤1200 chars) +
    *  its viewport bounds. Optional — present only on selection-explain asks. */
@@ -45,7 +49,14 @@ export const RequestSnapshotPayload = z.object({ scope: z.enum(["full","region"]
 export const SessionEndPayload = z.object({
   outcome: z.enum(["done","stopped","expired","gave-up"]), message: z.string(),
   recap: z.array(z.string()).default([]), masteryNote: z.string().optional() });
-export const ErrorPayload = z.object({ code: z.string(), message: z.string() });
+/** P1-6: the error contract is CODED — clients key behavior on `code`, never
+ *  on prose. "token-expired" is reserved (lease expiry says signin-required);
+ *  retryAfterSeconds rides only on refusals that heal with time. */
+export const ErrorPayload = z.object({
+  code: z.enum(["bad-message", "internal", "busy", "session-cap", "daily-cap",
+    "capacity", "signin-required", "token-expired", "rate-limited"]),
+  message: z.string(),
+  retryAfterSeconds: z.number().int().positive().optional() });
 export const QuickAsksGetPayload = z.object({ app: z.string().min(1) });
 export const QuickAsksPayload = z.object({ items: z.array(z.object({
   // 8, not 3 (2026-08-20): the bar shows 3 idle and filters the rest as the

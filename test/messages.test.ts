@@ -56,6 +56,55 @@ describe("phase 1I additive fields", () => {
   });
 });
 
+describe("P1-6 error contract — coded refusals + retryAfterSeconds", () => {
+  it("ERROR rejects an unknown code (the enum is the contract)", () => {
+    expect(() => makeEnvelope("ERROR", { code: "provider", message: "boom" }))
+      .toThrow();
+  });
+
+  it("ERROR round-trips every contract code without retryAfterSeconds", () => {
+    for (const code of ["bad-message", "internal", "busy", "session-cap",
+      "daily-cap", "capacity", "signin-required", "token-expired", "rate-limited"]) {
+      const env = makeEnvelope("ERROR", { code, message: "m" }, "s1");
+      const p = parseEnvelope(JSON.stringify(env)).payload as any;
+      expect(p.code).toBe(code);
+      expect(p.retryAfterSeconds).toBeUndefined();
+    }
+  });
+
+  it("retryAfterSeconds is an optional positive-int round-trip", () => {
+    const env = makeEnvelope("ERROR",
+      { code: "busy", message: "m", retryAfterSeconds: 60 }, "s1");
+    expect((parseEnvelope(JSON.stringify(env)).payload as any).retryAfterSeconds)
+      .toBe(60);
+    expect(() => makeEnvelope("ERROR",
+      { code: "busy", message: "m", retryAfterSeconds: 0 })).toThrow();
+    expect(() => makeEnvelope("ERROR",
+      { code: "busy", message: "m", retryAfterSeconds: 1.5 })).toThrow();
+  });
+});
+
+describe("P1-6 schema maxima — ask text and hello token", () => {
+  const digest = { app: "a.com", title: "T", locale: "en",
+    landmarks: [], keyButtons: [] };
+
+  it("ASK text of 2000 chars is accepted, 2001 rejected (audit B4)", () => {
+    const ok = makeEnvelope("ASK", { text: "q".repeat(2000), digest,
+      mouse: { x: 0, y: 0 } }, "s1");
+    expect(((parseEnvelope(JSON.stringify(ok)).payload as any).text as string)
+      .length).toBe(2000);
+    expect(() => makeEnvelope("ASK", { text: "q".repeat(2001), digest,
+      mouse: { x: 0, y: 0 } }, "s1")).toThrow();
+  });
+
+  it("HELLO token of 4096 chars is accepted, 4097 rejected", () => {
+    const hello = (token: string): unknown => makeEnvelope("HELLO",
+      { adapter: "chrome-extension", protocol: 1, capabilities: ["guide"], token });
+    expect(() => hello("t".repeat(4096))).not.toThrow();
+    expect(() => hello("t".repeat(4097))).toThrow();
+  });
+});
+
 describe("PART O1 additive fields", () => {
   it("HELLO accepts an optional auth token (additive, protocol stays 1)", () => {
     const bare = makeEnvelope("HELLO",
