@@ -20,9 +20,24 @@
  *  block. Tags (U+E0000-E007F) encode arbitrary ASCII invisibly and are the
  *  best-known channel for text aimed at a model rather than a reader, so they
  *  matter more here than the zero-width characters everyone remembers. The `u`
- *  flag is required for the astral tag range. */
+ *  flag is required for the astral tag range.
+ *
+ *  Added for web-lens-A finding 5 (2026-08 OWASP-currency audit) — the
+ *  variation-selector byte channel ("sneaky bits", exploited in the wild by
+ *  the os-info-checker-es6 npm malware) plus the invisible filler stragglers:
+ *    U+034F          combining grapheme joiner
+ *    U+115F-U+1160   Hangul choseong / jungseong fillers
+ *    U+180E          Mongolian vowel separator (not \s in modern engines)
+ *    U+3164          Hangul filler
+ *    U+FE00-U+FE0F   variation selectors 1-16 (16 code points = bytes 0-15)
+ *    U+E0100-E01EF   variation selectors supplement (240 more = bytes 16-255)
+ *  Together the two VS ranges encode arbitrary BYTES invisibly. Trade-off,
+ *  accepted deliberately: stripping U+FE0F degrades an emoji sequence like
+ *  U+2764 U+FE0F to text presentation, but the base character survives — fine
+ *  for an LLM payload, and no filter can tell a heart's VS16 from a
+ *  smuggler's. */
 const INVISIBLE =
-  /[\u00AD\u200B-\u200F\u202A-\u202E\u2066-\u2069\u2060-\u2064\uFEFF\u{E0000}-\u{E007F}]/u;
+  /[\u00AD\u034F\u115F\u1160\u180E\u200B-\u200F\u202A-\u202E\u2066-\u2069\u2060-\u2064\u3164\uFE00-\uFE0F\uFEFF\u{E0000}-\u{E007F}\u{E0100}-\u{E01EF}]/u;
 /** Anything angle-bracketed: real markup, and forged delimiters like
  *  `</untrusted>` that would otherwise end the data block early. */
 const MARKUP = /<[^>]*>/;
