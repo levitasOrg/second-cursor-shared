@@ -1,0 +1,23 @@
+// The PUBLISH build. tsconfig.json is the typecheck config (src + test, driven
+// with --noEmit); this one emits the package a consumer outside this repo would
+// install: JS + .d.ts under dist/, src/ only, tests excluded.
+//
+// noEmit is not inherited from tsconfig.base.json — it lives on the typecheck
+// script's command line — but it is pinned false here so a future base-config
+// change cannot silently turn the build into a no-op.
+//
+// Maps are off on purpose: sourceMap/declarationMap would reference ../src,
+// which the `files` allowlist does not publish, leaving dangling references in
+// the tarball.
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "outDir": "dist",
+    "rootDir": "src",
+    "declaration": true,
+    "declarationMap": false,
+    "sourceMap": false
+  },
+  "include": ["src"]
+}
