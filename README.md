@@ -43,12 +43,33 @@ pointing the `@second-cursor` scope at the GitHub registry:
 pnpm add @second-cursor/shared
 ```
 
-Before the first tagged release, consume it straight from git — the `prepare`
+### From git, before the first release
+
+Until there is a tagged release, consume it straight from git. The `prepare`
 script builds `dist/` at install time, so no registry is involved:
 
 ```sh
 pnpm add github:GokulMV/second-cursor-shared#main
 ```
+
+pnpm 11 will refuse that on its own — a git dependency that runs `prepare` is a
+build script, and build scripts are opt-in. **The consumer** must allowlist it
+in its own `pnpm-workspace.yaml`:
+
+```yaml
+allowBuilds:
+  "@second-cursor/shared@0.1.0": true
+```
+
+Key it by version, as above. pnpm's own error message suggests a key pinned to
+the resolved commit SHA; that works too, but it goes stale the moment `main`
+moves. Without the allowlist the install fails outright with
+`ERR_PNPM_GIT_DEP_PREPARE_NOT_ALLOWED` — it does not quietly install an
+unbuilt package.
+
+Verified end to end: the installed tree contains `dist/` (20 files), `README.md`,
+`LICENSE` and `package.json` — `files` is honoured on a git install exactly as
+on a registry one, so `src/` is not there and must never be resolved.
 
 ## Use
 
@@ -77,6 +98,16 @@ Publishing is tag-driven. Bump `version` in `package.json`, commit, then push a
 matching `v*` tag; `.github/workflows/publish.yml` builds and publishes to
 GitHub Packages with the workflow's own `GITHUB_TOKEN`. Nothing publishes on a
 plain push to `main`.
+
+> **Blocked until the scope has an owner.** GitHub Packages only accepts a
+> package whose npm scope matches the account that owns the repository. This
+> package is `@second-cursor/*` and the repository is owned by `GokulMV`, so
+> the first `pnpm publish` will be rejected. Two ways out: create a GitHub
+> organisation named `second-cursor` (the name is currently unclaimed) and move
+> the repo into it, which keeps every import path unchanged — or rename the
+> package to `@gokulmv/second-cursor-shared`, which changes the import
+> specifier in all three consumers. The git install above needs neither and is
+> unaffected.
 
 ## License
 
