@@ -49,7 +49,7 @@ Until there is a tagged release, consume it straight from git. The `prepare`
 script builds `dist/` at install time, so no registry is involved:
 
 ```sh
-pnpm add github:GokulMV/second-cursor-shared#main
+pnpm add github:levitasOrg/second-cursor-shared#main
 ```
 
 pnpm 11 will refuse that on its own — a git dependency that runs `prepare` is a

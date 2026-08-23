@@ -6,10 +6,10 @@
   "author": "Gokul MV",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/GokulMV/second-cursor-shared.git"
+    "url": "git+https://github.com/levitasOrg/second-cursor-shared.git"
   },
-  "homepage": "https://github.com/GokulMV/second-cursor-shared#readme",
-  "bugs": { "url": "https://github.com/GokulMV/second-cursor-shared/issues" },
+  "homepage": "https://github.com/levitasOrg/second-cursor-shared#readme",
+  "bugs": { "url": "https://github.com/levitasOrg/second-cursor-shared/issues" },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"
   },
