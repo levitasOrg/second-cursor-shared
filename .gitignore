@@ -1,0 +1,16 @@
+node_modules/
+dist/
+*.tsbuildinfo
+*.tgz
+# Never track an .npmrc: the GitHub Packages one carries a token, and CI writes
+# one into the working tree at publish time.
+.npmrc
+.DS_Store
+.superpowers/
+.claude/
+
+# Internal product docs: plans, phases, specs, architecture, mockups stay LOCAL.
+# The repo policy (README public-safe) extends here — nothing that maps the
+# product roadmap or internals is tracked. Inherited deliberately from the
+# monorepo root; it is a public-safety policy, not an artifact of that layout.
+docs/

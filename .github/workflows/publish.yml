@@ -1,0 +1,68 @@
+# Publish @second-cursor/shared to GitHub Packages.
+#
+# TAG-DRIVEN, never push-driven: a version is a deliberate act. Pushing to main
+# publishes nothing; pushing a `v*` tag publishes exactly the commit that tag
+# points at. That keeps "what is on main" and "what consumers installed" two
+# separate, auditable facts.
+#
+# The registry is GitHub Packages, not public npm — this code is all rights
+# reserved (see LICENSE), and a private registry is the honest fit. Auth is the
+# workflow's own GITHUB_TOKEN; there is no long-lived npm token to leak or
+# rotate, which is the whole reason for `permissions: packages: write` below.
+name: publish
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    # Narrowest set that can do the job: read the tree, write one package.
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+          cache: pnpm
+      # Deliberately NOT using setup-node's `registry-url`: it rewrites the
+      # DEFAULT registry, and npm.pkg.github.com does not proxy npmjs, so the
+      # install below would fail to find zod/typescript/vitest. The scoped
+      # registry + auth line is appended after install instead.
+      - run: pnpm install --frozen-lockfile
+
+      # The tag is the version claim; package.json is the version fact. If they
+      # disagree, someone tagged the wrong commit — fail here rather than ship a
+      # 0.1.0 tarball under a v0.2.0 tag.
+      - name: Tag must match package.json version
+        run: |
+          pkg="$(node -p "require('./package.json').version")"
+          tag="${GITHUB_REF_NAME#v}"
+          if [ "$pkg" != "$tag" ]; then
+            echo "tag $GITHUB_REF_NAME does not match package.json version $pkg" >&2
+            exit 1
+          fi
+
+      # A publish is the one build nobody gets to re-run, so it re-answers every
+      # cheap question first even though CI already did on main.
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+
+      - name: Publish to GitHub Packages
+        run: |
+          {
+            echo "@second-cursor:registry=https://npm.pkg.github.com"
+            echo "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}"
+          } >> .npmrc
+          # --no-git-checks: a tag build is a detached HEAD, which pnpm would
+          # otherwise refuse to publish from.
+          pnpm publish --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

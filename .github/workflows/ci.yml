@@ -1,0 +1,37 @@
+# CI needs ZERO configured secrets: the suite is pure unit tests over schemas.
+#
+# This file is only the CALLER. The stages live in node-pnpm-ci.yml so the same
+# pipeline can be shared across our Node repos.
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# A second push to the same branch makes the first run's answer worthless.
+# main is exempt: those runs are the record of what shipped.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  ci:
+    # A called workflow can only NARROW the caller's token, never widen it, so
+    # the permission gitleaks needs to read a PR's commits has to be granted
+    # here — the repo default is contents-read only, and asking for more inside
+    # the called workflow fails the run at startup (startup_failure) rather
+    # than at the step. Omitting this is exactly what broke the monorepo.
+    permissions:
+      contents: read
+      pull-requests: read
+    uses: ./.github/workflows/node-pnpm-ci.yml
+    with:
+      node-version: "22"
+      # One package in this repo, so one unit task. Named rather than left to
+      # a bare `pnpm test` so the check appears as "unit (@second-cursor/shared)".
+      unit-packages: '["@second-cursor/shared"]'
+      # No Playwright suite here — the browser-level tests live with the
+      # adapters that own a browser.
+      run-e2e: false
+      run-secret-scan: true

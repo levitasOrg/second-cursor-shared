@@ -1,1 +1,22 @@
-{ "extends": "../tsconfig.base.json", "include": ["src", "test"] }
+// Typecheck config: src + test, driven with --noEmit by the `typecheck` script.
+// tsconfig.build.json extends this and is the config that actually emits dist/.
+//
+// These options were inherited from the monorepo's tsconfig.base.json before
+// this package was split out; they are inlined here because there is no longer
+// a parent config to extend.
+//
+// The base also carried `customConditions: ["second-cursor-source"]`. That
+// existed ONLY so in-monorepo consumers resolved this package's src/ instead of
+// a possibly-stale dist/. Standalone there is no such consumer, and a resolution
+// condition nothing declares would silently resolve to nothing — so it is
+// deliberately NOT carried over. The matching key in package.json `exports` is
+// gone for the same reason: `files` never ships src/, in a registry install or
+// a git-URL one, so that condition could only ever point at a missing file.
+{
+  "compilerOptions": {
+    "target": "ES2022", "module": "ES2022", "moduleResolution": "bundler",
+    "strict": true, "noUncheckedIndexedAccess": true, "skipLibCheck": true,
+    "declaration": true, "sourceMap": true
+  },
+  "include": ["src", "test"]
+}

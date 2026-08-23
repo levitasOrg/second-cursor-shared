@@ -1,0 +1,42 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.10/schema.json",
+  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+  // Lint ONLY. The formatter stays off: the codebase's hand-aligned comment and
+  // layout style is deliberate; no mass reformatting, ever.
+  "formatter": { "enabled": false },
+  "assist": { "enabled": false },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "preset": "recommended",
+      "style": {
+        // 17 hits (test/intent, test/messages, test/sanitize, src/matcher):
+        // assertions sit under tested guards — post-validate access and test
+        // fixtures. tsc strict + the 81-test suite are the safety net.
+        "noNonNullAssertion": "off",
+        // 2 hits in test/sanitize: hand-written concatenation is the
+        // codebase's string idiom.
+        "useTemplate": "off"
+      },
+      "suspicious": {
+        // 15 hits, all in tests: `as any` on payloads being probed for fields
+        // the narrow type does not admit. tsc strict is the type gate on src/,
+        // not lint on the fixtures.
+        "noExplicitAny": "off"
+      }
+    }
+  },
+  // The monorepo's exclude list named paths that live in the other repos now
+  // (extension/src/ui/thinking-words.ts, e2e/fixtures, e2e/test-results,
+  // e2e/demo-video); only these three are real here. dist/ and node_modules
+  // are also covered by useIgnoreFile above — kept explicit so the config
+  // stands on its own if that ever flips off.
+  "files": {
+    "includes": [
+      "**",
+      "!**/dist",
+      "!**/node_modules",
+      "!pnpm-lock.yaml"
+    ]
+  }
+}

@@ -1,12 +1,23 @@
 {
   "name": "@second-cursor/shared",
   "version": "0.1.0",
+  "description": "Wire contract between the Second Cursor brain and every adapter: message schemas, step/recipe types, matcher, sanitizer and trace primitives.",
+  "license": "SEE LICENSE IN LICENSE",
+  "author": "Gokul MV",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GokulMV/second-cursor-shared.git"
+  },
+  "homepage": "https://github.com/GokulMV/second-cursor-shared#readme",
+  "bugs": { "url": "https://github.com/GokulMV/second-cursor-shared/issues" },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "second-cursor-source": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
@@ -19,13 +30,25 @@
     "LICENSE"
   ],
   "sideEffects": false,
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@11.21.0",
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "prepare": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "lint": "biome check .",
+    "verify": "pnpm lint && pnpm typecheck && pnpm test && pnpm build"
   },
   "dependencies": {
     "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.9",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
   }
 }

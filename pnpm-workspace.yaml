@@ -1,0 +1,19 @@
+# This repo is a SINGLE package, not a workspace — the `packages` list the
+# monorepo root carried is gone. The file stays because pnpm reads its
+# install-time settings from here, and these are worth keeping.
+
+# esbuild ships a platform binary its postinstall unpacks; vitest cannot
+# transform a file without it. Without this, `pnpm install` exits 1 with
+# ERR_PNPM_IGNORED_BUILDS. Same allowance the monorepo root carried.
+allowBuilds:
+  esbuild: true
+
+# Supply-chain cooldown: refuse package versions published <7 days ago
+# (post-Shai-Hulud consensus; would have blocked the 2025 npm worms).
+minimumReleaseAge: 10080
+minimumReleaseAgeExclude:
+  # Carried over from the monorepo and re-verified 2026-08-23: without this,
+  # `pnpm install` fails ERR_PNPM_NO_MATURE_MATCHING_VERSION on all 9 @biomejs
+  # packages (2.5.9 published 2026-08-17, clears the window 2026-08-24).
+  # Removable after that date — drop these two lines and re-run install.
+  - "@biomejs/*"

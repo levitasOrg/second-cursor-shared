@@ -1,0 +1,192 @@
+# Reusable CI for a pnpm/TypeScript repo.
+#
+# Authored as a `workflow_call` workflow so the same pipeline can serve every
+# Node repo we own: a caller supplies its package list and whether it has an
+# e2e suite, and gets the identical stage breakdown. A verbatim copy of the
+# file that grew up in the second-cursor monorepo — kept byte-identical below
+# the header on purpose, so the copies stay diffable until this is lifted into
+# one shared repo (at which point every caller's `uses:` becomes a path change
+# and nothing else).
+#
+# This repo has no e2e suite and exactly one package, so its caller passes
+# run-e2e:false and a single-entry unit-packages. The e2e job below is dead
+# weight here; it is kept rather than trimmed so the copies do not diverge.
+#
+# Stage split (deployment-pipeline-design: one stage = one question, and a
+# stage only runs if the cheaper questions already came back clean). Gated on
+# purpose: a broken lint or a leaked secret stops the pipeline instead of
+# spending runner minutes proving the rest of an unshippable commit.
+#
+#   lint ────┐
+#            ├─→ typecheck ─→ unit (one task per package) ─┐
+#   secrets ─┘                └─→ build ──────────────────-┴─→ e2e
+#
+# The cost of gating is honest: you learn about one stage's failure per push
+# rather than all of them at once. That trade is right here because `pnpm
+# verify` answers lint/typecheck/unit locally in seconds — CI is the last
+# check, not the first.
+#
+# Every action is pinned to a commit SHA (GitHub's hardening guidance after
+# tj-actions/changed-files); dependabot's github-actions ecosystem keeps them
+# fresh.
+name: node-pnpm-ci
+
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        description: Node major to test on. Must satisfy the repo's engines field.
+        type: string
+        default: "22"
+      unit-packages:
+        description: >-
+          JSON array of pnpm filters, one CI task each. Split per package on
+          purpose: "unit (brain)" names the failure in the checks list, where
+          a single rolled-up "test" job would not.
+        type: string
+        default: '[]'
+      run-e2e:
+        description: Run the Playwright suite (headed under xvfb — extensions cannot load headless).
+        type: boolean
+        default: false
+      e2e-filter:
+        description: pnpm filter for the e2e package.
+        type: string
+        default: "e2e"
+      run-secret-scan:
+        description: Full-history gitleaks scan.
+        type: boolean
+        default: true
+
+jobs:
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+
+  typecheck:
+    name: typecheck
+    needs: [lint, secrets]
+    # `always()` because a SKIPPED dependency would otherwise skip this job too
+    # (a caller that sets run-secret-scan:false must still get a pipeline).
+    # A skipped secrets scan is fine; a failed one is not.
+    if: >-
+      always() && needs.lint.result == 'success' &&
+      (needs.secrets.result == 'success' || needs.secrets.result == 'skipped')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+
+  unit:
+    # `unit (@second-cursor/brain)` in the checks list; fail-fast off so one
+    # package's failure does not hide another's.
+    name: unit (${{ matrix.package }})
+    needs: [typecheck]
+    if: inputs.unit-packages != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ${{ fromJSON(inputs.unit-packages) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter ${{ matrix.package }} test
+
+  build:
+    name: build
+    needs: [typecheck]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r --if-present run build
+
+  e2e:
+    name: e2e
+    # Last, and most expensive: four minutes of headed browser only after the
+    # cheap answers are all in. Same `always()` reasoning as typecheck — a
+    # caller with no unit packages still gets its e2e run.
+    needs: [unit, build]
+    if: >-
+      always() && inputs.run-e2e && needs.build.result == 'success' &&
+      (needs.unit.result == 'success' || needs.unit.result == 'skipped')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Browser binaries are ~200MB and change only when Playwright does, so
+      # they are keyed on the lockfile rather than downloaded every run.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: pw-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('**/pnpm-lock.yaml') }}
+      - run: npx playwright install chromium --with-deps
+        working-directory: ${{ inputs.e2e-filter }}
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+      # System deps live outside the cached directory, so they are installed
+      # even on a cache hit — this is the cheap half.
+      - run: npx playwright install-deps chromium
+        working-directory: ${{ inputs.e2e-filter }}
+        if: steps.pw-cache.outputs.cache-hit == 'true'
+      # xvfb because the suite loads the real unpacked extension, which headless
+      # Chrome cannot do. `pnpm --filter e2e test` runs the pretest build first:
+      # a bare `npx playwright test` would silently test a stale dist.
+      - run: xvfb-run -a pnpm --filter ${{ inputs.e2e-filter }} test
+        env:
+          SC_FAST_PROVIDER: "off"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: failure()
+        with:
+          name: playwright-results
+          path: ${{ inputs.e2e-filter }}/test-results/
+          if-no-files-found: ignore
+
+  secrets:
+    name: secrets
+    if: inputs.run-secret-scan
+    runs-on: ubuntu-latest
+    # The repo's default workflow token is contents-read only, and gitleaks
+    # enumerates a PR's commits — that 403'd every dependabot PR until this
+    # was declared. Read-only, and no wider than the endpoint needs.
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # full history so gitleaks scans every commit
+      - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
