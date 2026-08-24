@@ -12,6 +12,24 @@
 # run-e2e:false and a single-entry unit-packages. The e2e job below is dead
 # weight here; it is kept rather than trimmed so the copies do not diverge.
 #
+# ── The one credential, and why it is allowed in here ─────────────────────
+#
+# This file used to say that no credential plumbing belonged in it, because
+# repo-specific secret handling would end the byte-identical property. That rule
+# was right about the goal and wrong about the mechanism: the upstreams are git
+# dependencies on private repos, and the only moment a credential can matter is
+# inside `pnpm install` — which happens HERE, in five jobs, and nowhere a caller
+# can reach. There is no env or `insteadOf` a caller can set that survives into a
+# called workflow. So the rule yields, in the narrowest way that keeps the goal:
+#
+#   * the secret is declared OPTIONAL and named `git_token`, not after any repo's
+#     secret. Which secret feeds it is the caller's business.
+#   * the step is a NO-OP when it is absent, so a repo with public dependencies
+#     behaves exactly as it did before this existed and needs no edit.
+#
+# The file therefore stays byte-identical across the fleet — verify with
+# `diff -q` against any sibling repo's copy — and only the callers differ.
+#
 # Stage split (deployment-pipeline-design: one stage = one question, and a
 # stage only runs if the cheaper questions already came back clean). Gated on
 # purpose: a broken lint or a leaked secret stops the pipeline instead of
@@ -57,6 +75,13 @@ on:
         description: Full-history gitleaks scan.
         type: boolean
         default: true
+    secrets:
+      git_token:
+        description: >-
+          Read-only credential for git dependencies on PRIVATE repositories,
+          used to rewrite https://github.com/ at install time. Optional, and
+          named generically on purpose — see the header note.
+        required: false
 
 jobs:
   lint:
@@ -69,6 +94,19 @@ jobs:
         with:
           node-version: ${{ inputs.node-version }}
           cache: pnpm
+      # No-op unless the caller passed `git_token`. See the header note.
+      - name: credential for private git dependencies
+        env:
+          GIT_TOKEN: ${{ secrets.git_token }}
+        run: |
+          set -eu
+          if [ -z "${GIT_TOKEN:-}" ]; then
+            echo "No git_token supplied — assuming every dependency is public."
+            exit 0
+          fi
+          git config --global \
+            url."https://x-access-token:${GIT_TOKEN}@github.com/".insteadOf \
+            "https://github.com/"
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
 
@@ -89,6 +127,19 @@ jobs:
         with:
           node-version: ${{ inputs.node-version }}
           cache: pnpm
+      # No-op unless the caller passed `git_token`. See the header note.
+      - name: credential for private git dependencies
+        env:
+          GIT_TOKEN: ${{ secrets.git_token }}
+        run: |
+          set -eu
+          if [ -z "${GIT_TOKEN:-}" ]; then
+            echo "No git_token supplied — assuming every dependency is public."
+            exit 0
+          fi
+          git config --global \
+            url."https://x-access-token:${GIT_TOKEN}@github.com/".insteadOf \
+            "https://github.com/"
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
 
@@ -110,6 +161,19 @@ jobs:
         with:
           node-version: ${{ inputs.node-version }}
           cache: pnpm
+      # No-op unless the caller passed `git_token`. See the header note.
+      - name: credential for private git dependencies
+        env:
+          GIT_TOKEN: ${{ secrets.git_token }}
+        run: |
+          set -eu
+          if [ -z "${GIT_TOKEN:-}" ]; then
+            echo "No git_token supplied — assuming every dependency is public."
+            exit 0
+          fi
+          git config --global \
+            url."https://x-access-token:${GIT_TOKEN}@github.com/".insteadOf \
+            "https://github.com/"
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter ${{ matrix.package }} test
 
@@ -124,6 +188,19 @@ jobs:
         with:
           node-version: ${{ inputs.node-version }}
           cache: pnpm
+      # No-op unless the caller passed `git_token`. See the header note.
+      - name: credential for private git dependencies
+        env:
+          GIT_TOKEN: ${{ secrets.git_token }}
+        run: |
+          set -eu
+          if [ -z "${GIT_TOKEN:-}" ]; then
+            echo "No git_token supplied — assuming every dependency is public."
+            exit 0
+          fi
+          git config --global \
+            url."https://x-access-token:${GIT_TOKEN}@github.com/".insteadOf \
+            "https://github.com/"
       - run: pnpm install --frozen-lockfile
       - run: pnpm -r --if-present run build
 
@@ -144,6 +221,19 @@ jobs:
         with:
           node-version: ${{ inputs.node-version }}
           cache: pnpm
+      # No-op unless the caller passed `git_token`. See the header note.
+      - name: credential for private git dependencies
+        env:
+          GIT_TOKEN: ${{ secrets.git_token }}
+        run: |
+          set -eu
+          if [ -z "${GIT_TOKEN:-}" ]; then
+            echo "No git_token supplied — assuming every dependency is public."
+            exit 0
+          fi
+          git config --global \
+            url."https://x-access-token:${GIT_TOKEN}@github.com/".insteadOf \
+            "https://github.com/"
       - run: pnpm install --frozen-lockfile
       # Browser binaries are ~200MB and change only when Playwright does, so
       # they are keyed on the lockfile rather than downloaded every run.
